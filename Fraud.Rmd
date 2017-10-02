@@ -1,0 +1,62 @@
+---
+title: "Fraud"
+author: "Christine Iyer"
+date: "October 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+We are delighted to have you continue on in our interview process!
+Please complete the scenario below. The set of data needed to review is attached separately as an excel
+document. Feel free to manipulate the document. You will be presenting your solution and findings
+during your onsite interview with the management team.
+
+Operational Scenario:
+*See Excel Document Attached
+
+We have 3 locations staffed with manual fraud reviewers: Atlantic City, Montreal, and Ibiza. Fraud
+reviewers in this position will evaluate orders for fraudulent activity and decide to cancel or pass the
+order. We have 13 total reviewers that we can allocate to any location. Each reviewer can look at 100
+orders per hour and work 8 hours total per day.
+
+* Atlantic City is staffed from 8a-6p EST
+
+* Montreal is staffed from 10a-9p EST
+
+* Ibiza is staffed from 2a-10a EST
+
+Using the data in the attached spreadsheet please analyze and recommend your staffing
+recommendations for all 3 locations assuming that this data will remain constant year round. The
+spreadsheet contains one month of order data with order times and dates. In addition to a staffing
+recommendation please highlight any other trends that you see in our fraud data. Would you have any
+further questions on the ask? What would your next steps be?
+Please be ready to make your recommendation and highlight any trends that you find in a short 5-
+minute presentation using your preferred method to present (Power Point, Excel, etc...).
+
+
+
+```{r}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+fraud <- read.csv("test_frauddata.csv", header = T, stringsAsFactors = F)
+fraud$OrderDate <- as.Date(fraud$OrderDate, format = "%m/%d/%Y")
+
+fraud <- fraud %>% rename(Fraudulent = OrderIsFraudulent..1.yes..0.No., Revenue = OrderRevenue,State = OrderState )
+kable(head(fraud))
+```
+
+```{r}
+str(fraud)
+
+ggplot(fraud, aes(x = OrderDate))
+range(fraud$OrderDate)
+```
+

@@ -55,12 +55,11 @@ kable(head(fraud))
 kable(tail(fraud))
 ```
 
-
 Time Zones
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 library(rvest)
-pageZone <- read_html("https://state.1keydata.com/time-zone-state.php")
+pageZone <- url("https://state.1keydata.com/time-zone-state.php")
 
 
 name <- pageZone %>% html_nodes("tr+ tr td:nth-child(1)") %>% html_text()
@@ -74,7 +73,7 @@ timeZonesStates
 
 This calculates the time differences to correct for Eastern Times
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 fraudCanada <- fraud %>% filter(Country == "Canada")
 StatesCanada <- unique(fraudCanada$State)
 StatesCanada
@@ -102,35 +101,46 @@ USCanadaZones <- USCanadaZones %>% rename(State = name)
 
 
 ```{r}
+USCanadaZones <- read.csv("USCAZones.csv", header = T, stringsAsFactors = F)
 fraud11 <- inner_join(fraud, USCanadaZones)
 fraud11 <- fraud11 %>% mutate(orderEasternTime = OrderHour + differenceZone)
-head(fraud11)
-range(fraud11$orderEasternTime)
-dim(fraud11)
-
+#kable(tail(fraud11, 100))
+#range(fraud11$orderEasternTime)
+#dim(fraud11)
+fraud111 <- fraud11 %>% mutate(correctedTime = ifelse(orderEasternTime>23, orderEasternTime - 24, ""))
+#kable(tail(fraud111, 100))
 #fraud11 %>% filter(orderEasternTime < 0 | orderEasternTime>23) %>% group_by(State) %>% summarise(n = n())
 ```
 
+
+#Corrected Zones
+
+```{r}
+fraud111 <- fraud11 %>% mutate(orderEasternTime = ifelse(orderEasternTime>23, orderEasternTime - 24, ifelse(orderEasternTime<0, orderEasternTime +24, orderEasternTime)))
+#fraud111 <- fraud111 %>% mutate(correctedTime = ifelse(orderEasternTime<0, orderEasternTime + 24, orderEasternTime))
+kable(tail(fraud111, 100))
+
+```
 
 
 Below is how many orders there were each day of the month.
 
 ```{r}
-ggplot(fraud, aes(x = OrderDate))+ geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(fraud111, aes(x = OrderDate))+ geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 Below is the same data grouped by day of the week. 
 
 ```{r}
-fraud$OrderDayWeek <- factor(fraud$OrderDayWeek, levels= c("Sunday", "Monday", 
+fraud111$OrderDayWeek <- factor(fraud111$OrderDayWeek, levels= c("Sunday", "Monday", 
     "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
-ggplot(fraud, aes(x = OrderDayWeek, fill = factor(Fraudulent), group = (Fraudulent) )) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+ggplot(fraud111, aes(x = OrderDayWeek, fill = factor(Fraudulent), group = (Fraudulent) )) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   scale_fill_manual(values=c('purple',
 'forestgreen'))
 ```
 
 ```{r}
-fraudulentDays <- fraud %>% group_by(OrderDayWeek, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count)*100, digits = 2))
+fraudulentDays <- fraud111 %>% group_by(OrderDayWeek, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count)*100, digits = 2))
 
 fraudulentDays
 
@@ -139,10 +149,10 @@ ggplot(fraudulentDays, aes(x = OrderDayWeek, y = perc, fill = factor(Fraudulent)
 ```
 
 ```{r}
-fraudulentTimes <- fraud %>% group_by(OrderHour, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
+fraudulentTimes <- fraud111 %>% group_by(orderEasternTime, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
 fraudulentTimes
 
-ggplot(fraudulentTimes, aes(x = OrderHour, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
+ggplot(fraudulentTimes, aes(x = orderEasternTime, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
   scale_fill_manual(values=c('purple',
 'forestgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + scale_x_continuous(breaks = 0:23) + theme_bw() 
 ```
@@ -151,8 +161,8 @@ ggplot(fraudulentTimes, aes(x = OrderHour, y = perc , fill = factor(Fraudulent),
 
 ```{r, fig.height=20, fig.width=8}
 
-fraudulentTimesSites <- fraud %>% group_by(OrderHour, Website, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
-ggplot(fraudulentTimesSites, aes(x = OrderHour, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
+fraudulentTimesSites <- fraud111 %>% group_by(orderEasternTime, Website, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
+ggplot(fraudulentTimesSites, aes(x = orderEasternTime, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
   scale_fill_manual(values=c('purple',
 'forestgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + scale_x_continuous(breaks = 0:23)+ facet_wrap(~Website, ncol = 1) + theme_bw() +
   theme(strip.background =element_rect(fill="yellow"))+
@@ -187,7 +197,24 @@ PercentFraud %>% group_by(Country) %>% summarise(NumberFraudOrders = sum(Fraudul
 ![Lost Revenue](LostRev.png){width1000px height=1000px dpi=203}
 ![Lost Revenue](RevenueByState.png){width1000px height=1000px dpi=203}
 
+Group by days of the week and calculate the average number of orders.
 
+```{r}
+fraud1111 <- fraud111 %>% group_by(OrderDayWeek) %>% summarise(count = n()) 
+fraud1111$newColumn <- c(4,5,5,5,4,4,4)
+fraud1111 %>% mutate(average = count/newColumn)
+```
+
+
+
+```{r}
+head(fraud111)
+XXX <- fraud111 %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(totalOrders = n())
+YYY <- fraud111 %>% filter(Fraudulent == 1) %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(fraudOrders = n())
+zzz <- inner_join(XXX, YYY)
+zzz %>% mutate(percentFraudulentOrders = round(fraudOrders/totalOrders, digits = 2))
+fraud111 %>% group_by(OrderDayWeek, orderEasternTime, Fraudulent) %>% summarise(n = n())
+```
 
 
 

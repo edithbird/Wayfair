@@ -1,0 +1,67 @@
+"State","zone","differenceZone"
+"Alabama","Central Time Zone",-1
+"Alaska","Alaska Time Zone, Hawaii-Aleutian Time Zone",-6
+"Arizona","Mountain Time Zone",-2
+"Arkansas","Central Time Zone",-1
+"California","Pacific Time Zone",-3
+"Colorado","Mountain Time Zone",-2
+"Connecticut","Eastern Time Zone",0
+"Delaware","Eastern Time Zone",0
+"Florida","Eastern Time Zone, Central Time Zone",1
+"Georgia","Eastern Time Zone",0
+"Hawaii","Hawaii-Aleutian Time Zone",-6
+"Idaho","Mountain Time Zone, Pacific Time Zone",-2
+"Illinois","Central Time Zone",-1
+"Indiana","Eastern Time Zone, Central Time Zone",1
+"Iowa","Central Time Zone",-1
+"Kansas","Central Time Zone, Mountain Time Zone",-2
+"Kentucky","Eastern Time Zone, Central Time Zone",1
+"Louisiana","Central Time Zone",-1
+"Maine","Eastern Time Zone",0
+"Maryland","Eastern Time Zone",0
+"Massachusetts","Eastern Time Zone",0
+"Michigan","Eastern Time Zone, Central Time Zone",1
+"Minnesota","Central Time Zone",-1
+"Mississippi","Central Time Zone",-1
+"Missouri","Central Time Zone",-1
+"Montana","Mountain Time Zone",-2
+"Nebraska","Central Time Zone, Mountain Time Zone",-2
+"Nevada","Pacific Time Zone, Mountain Time Zone",-3
+"New Hampshire","Eastern Time Zone",0
+"New Jersey","Eastern Time Zone",0
+"New Mexico","Mountain Time Zone",-2
+"New York","Eastern Time Zone",0
+"North Carolina","Eastern Time Zone",0
+"North Dakota","Central Time Zone, Mountain Time Zone",-2
+"Ohio","Eastern Time Zone",0
+"Oklahoma","Central Time Zone",-1
+"Oregon","Pacific Time Zone, Mountain Time Zone",-3
+"Pennsylvania","Eastern Time Zone",0
+"Rhode Island","Eastern Time Zone",0
+"South Carolina","Eastern Time Zone",0
+"South Dakota","Central Time Zone, Mountain Time Zone",-2
+"Tennessee","Eastern Time Zone, Central Time Zone",1
+"Texas","Central Time Zone, Mountain Time Zone",-2
+"Utah","Mountain Time Zone",-2
+"Vermont","Eastern Time Zone",0
+"Virginia","Eastern Time Zone",0
+"Washington","Pacific Time Zone",-3
+"West Virginia","Eastern Time Zone",0
+"Wisconsin","Central Time Zone",-1
+"Wyoming","Mountain Time Zone",-2
+"Saskatchewan","Pacific Time Zone",-3
+"Québec","Eastern Time Zone",0
+"Nova Scotia","Atlantic Time Zone",1
+"Alberta","Mountain Time Zone",-2
+"Ontario","Eastern Time Zone",0
+"Manitoba","Central Time Zone",-1
+"New Brunswick","Eastern Time Zone",0
+"British Columbia","Pacific Time Zone",-3
+"Newfoundland and Labrador","Atlantic Time Zone",1
+"Prince Edward Island","Atlantic Time Zone",1
+"Northwest Territories","Mountain Time Zone",-2
+"Yukon","Central Time Zone",-1
+"Nunavut","Eastern Time Zone",0
+"Puerto Rico","Atlantic Time Zone",1
+"Guam","Guam Time Zone",14
+"U.S. Virgin Islands","Eastern Time Zone",0

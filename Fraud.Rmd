@@ -1,12 +1,16 @@
 ---
-title: "Fraud"
+title: "Scheduling Fraud Reviewers for Online Orders"
 author: "Christine Iyer"
 date: "October 2, 2017"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
 ```
 
 
@@ -16,6 +20,7 @@ document. Feel free to manipulate the document. You will be presenting your solu
 during your onsite interview with the management team.
 
 Operational Scenario:
+
 *See Excel Document Attached
 
 We have 3 locations staffed with manual fraud reviewers: Atlantic City, Montreal, and Ibiza. Fraud
@@ -23,11 +28,11 @@ reviewers in this position will evaluate orders for fraudulent activity and deci
 order. We have 13 total reviewers that we can allocate to any location. Each reviewer can look at 100
 orders per hour and work 8 hours total per day.
 
-* Atlantic City is staffed from 8a-6p EST (6 hours ahead)
+* Atlantic City is staffed from 8a-6p EST (same)
 
-* Montreal is staffed from 10a-9p EST (6 hours ahead)
+* Montreal is staffed from 10a-9p EST (same)
 
-* Ibiza is staffed from 2a-10a EST (6 hours ahead)
+* Ibiza is staffed from 2a-10a EST (6 hours ahead)
 
 Using the data in the attached spreadsheet please analyze and recommend your staffing
 recommendations for all 3 locations assuming that this data will remain constant year round. The
@@ -38,42 +43,51 @@ Please be ready to make your recommendation and highlight any trends that you fi
 minute presentation using your preferred method to present (Power Point, Excel, etc...).
 
 
+###The Solution
 
-```{r}
+![](Solution1.png)
+ 
+ <br>
+Building a scheduling solution to maximize reviewers ability to detect fraud requires understanding the patterns in the data, namely 80,000 plus records from the month of August 2016, and consideration of the given constraints. 
+
+The data set contains 81,243 records of sales in the USA and Canada. 
+Below is a sample of the first 6 entries of order records from the month of August in 2016. The "Fraudulent" column shows a 1 if the order is fraudulent and a 0 if it is not. I added a country column to make a comparison between the US and Canada. (Because four states were hard to place, they're neither in the USA or Canada, I have excluded them from the data. Wayfair.ca was not one of the Websites where sales were made).
+
+**The Raw Data**
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 library(knitr)
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 ```
-The data set contains 81,243 records of sales in the USA and Canada. 
-Below is a sample of the first 6 entries of order records from the month of August in 2016. The "Fruadulent" shows a 1 if the order is fraudulent and a 0 if it is not. I added a country column to make a comparison between the US and Canada. Four states were hard to place, they're neither in the USA or Canada, so I have excluded them from the data.  (Wayfair.ca was not one of the Websites where sales were made).
 
-```{r}
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 fraud <- read.csv("test_frauddata.csv", header = T, stringsAsFactors = F)
 fraud$OrderDate <- as.Date(fraud$OrderDate, format = "%m/%d/%Y")
-fraud <- fraud %>% rename(Fraudulent = OrderIsFraudulent..1.yes..0.No., Revenue = OrderRevenue,State = OrderState ) %>% arrange(OrderDate)
-kable(head(fraud))
-kable(tail(fraud))
+fraud <- fraud %>% rename(Fraudulent = OrderIsFraudulent..1.yes..0.No., Revenue = OrderRevenue,State = OrderState ) %>% arrange(OrderDate) 
 ```
 
-Time Zones
+```{r, echo=FALSE}
+kable(head(fraud))
+```
+
+**Time Zones**
+
+I have made the assumption that the "Order Hour" is the time the customer placed the order in his or her own time zone. Since orders have been placed from all of over the USA and Canada, I added a column for the corrected time, i.e., EST, because the reviewers' scheduled hours are in EST. In this way, I can get an accurate sense of when ordering is busiest and when fraudulent activity is most prevalent.
 
 ```{r, eval=FALSE, include=FALSE}
+#this is how I made the time conversion
 library(rvest)
 pageZone <- url("https://state.1keydata.com/time-zone-state.php")
-
-
 name <- pageZone %>% html_nodes("tr+ tr td:nth-child(1)") %>% html_text()
 name
 zone <- pageZone %>% html_nodes("tr+ tr td+ td") %>% html_text()
 zone
 timeZonesStates <- cbind.data.frame(name,zone)
 timeZonesStates
-
-```
-
-This calculates the time differences to correct for Eastern Times
-
-```{r, eval=FALSE, include=FALSE}
+#This calculates the time differences to correct for Eastern Times
 fraudCanada <- fraud %>% filter(Country == "Canada")
 StatesCanada <- unique(fraudCanada$State)
 StatesCanada
@@ -89,20 +103,15 @@ USCanadaZones[65,1] <- "Guam"
 USCanadaZones[65,2] <- "Guam Time Zone"
 USCanadaZones[66,1] <- "U.S. Virgin Islands"
 USCanadaZones[66,2] <- "Eastern Time Zone"
-tail(USCanadaZones)
-unique(USCanadaZones$zone)
-
 USCanadaZones <- USCanadaZones %>% mutate(differenceZone = ifelse(zone == "Central Time Zone", -1, ifelse(zone == "Alaska Time Zone, Hawaii-Aleutian Time Zone", -6, ifelse(zone == "Mountain Time Zone", -2, ifelse(zone == "Pacific Time Zone", -3,  ifelse(zone == "Hawaii-Aleutian Time Zone", -6, ifelse(zone == "Mountain Time Zone, Pacific Time Zone", -2, ifelse(zone == "Central Time Zone, Mountain Time Zone", -2, ifelse(zone == "Guam Time Zone", 14, ifelse(zone == "Pacific Time Zone, Mountain Time Zone", -3, ifelse(zone == "Eastern Time Zone, Central Time Zone", 1,ifelse(zone == "Atlantic Time Zone", 1,0))))))))))))
 USCanadaZones <- USCanadaZones %>% rename(State = name)
-
-
 ```
 
 
-
-```{r}
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 USCanadaZones <- read.csv("USCAZones.csv", header = T, stringsAsFactors = F)
 fraud11 <- inner_join(fraud, USCanadaZones)
+fraud11 <- fraud11 %>% rename(Zone = State.1, differenceZone = State.2)
 fraud11 <- fraud11 %>% mutate(orderEasternTime = OrderHour + differenceZone)
 #kable(tail(fraud11, 100))
 #range(fraud11$orderEasternTime)
@@ -110,61 +119,195 @@ fraud11 <- fraud11 %>% mutate(orderEasternTime = OrderHour + differenceZone)
 fraud111 <- fraud11 %>% mutate(correctedTime = ifelse(orderEasternTime>23, orderEasternTime - 24, ""))
 #kable(tail(fraud111, 100))
 #fraud11 %>% filter(orderEasternTime < 0 | orderEasternTime>23) %>% group_by(State) %>% summarise(n = n())
+
 ```
 
+Below is the data with the standardized order time.
 
-#Corrected Zones
-
-```{r}
+```{r, echo=FALSE}
 fraud111 <- fraud11 %>% mutate(orderEasternTime = ifelse(orderEasternTime>23, orderEasternTime - 24, ifelse(orderEasternTime<0, orderEasternTime +24, orderEasternTime)))
+fraud111$OrderDayWeek <- factor(fraud111$OrderDayWeek, levels= c("Sunday", "Monday", 
+    "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
 #fraud111 <- fraud111 %>% mutate(correctedTime = ifelse(orderEasternTime<0, orderEasternTime + 24, orderEasternTime))
-kable(tail(fraud111, 100))
 
+kable(head(fraud111))
 ```
 
+__Visualizing the data__
 
 Below is how many orders there were each day of the month.
 
 ```{r}
-ggplot(fraud111, aes(x = OrderDate))+ geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+One <- ggplot(fraud111, aes(x = OrderDate))+ geom_bar(fill = "darkorchid1") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +theme_bw()  + 
+  labs(title = "Orders in August 2016 by Day of the Week",
+       x = "Date", y = "Daily Orders")
 ```
 
-Below is the same data grouped by day of the week. 
-
 ```{r}
+Two <- ggplot(fraud111, aes(x = OrderDate, fill = factor(Fraudulent), group = (Fraudulent))) + 
+  geom_bar()+ theme_bw() + 
+  labs(title = "Orders in August 2016 by Day of the Week",
+       subtitle = "Fraudulent Orders Highlighted in Green",
+       x = "Date", y = "Daily Orders") +
+  scale_fill_manual(values=c('darkorchid1','yellowgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + theme(legend.position="none")
+  
+  
+```
+
+```{r, fig.height=4, fig.width=9}
+grid.arrange(One, Two, ncol=2)
+```
+
+
+There appears to be a weekly pattern to the data. We can look at the data weekly. 
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 fraud111$OrderDayWeek <- factor(fraud111$OrderDayWeek, levels= c("Sunday", "Monday", 
     "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
-ggplot(fraud111, aes(x = OrderDayWeek, fill = factor(Fraudulent), group = (Fraudulent) )) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
-  scale_fill_manual(values=c('purple',
-'forestgreen'))
-```
 
-```{r}
-fraudulentDays <- fraud111 %>% group_by(OrderDayWeek, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count)*100, digits = 2))
-
-fraudulentDays
-
-ggplot(fraudulentDays, aes(x = OrderDayWeek, y = perc, fill = factor(Fraudulent), group = (Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
-  scale_fill_manual(values=c('purple','forestgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) +  ylab("Frequency") 
-```
-
-```{r}
 fraudulentTimes <- fraud111 %>% group_by(orderEasternTime, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
 fraudulentTimes
 
-ggplot(fraudulentTimes, aes(x = orderEasternTime, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
-  scale_fill_manual(values=c('purple',
-'forestgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + scale_x_continuous(breaks = 0:23) + theme_bw() 
+
+Three <- ggplot(fraud111, aes(x = OrderDayWeek, fill = factor(Fraudulent), group = (Fraudulent) )) + geom_bar()+ 
+  scale_fill_manual(values=c('darkorchid1',
+'yellowgreen'))+theme_bw() + ylab("Daily Orders") +
+  ggtitle("Orders by Day of the Week") + xlab("Order Day") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ theme(legend.position="none")
+```
+
+```{r, echo=FALSE}
+fraudulentDays <- fraud111 %>% group_by(OrderDayWeek, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 2))
+Four <- ggplot(fraudulentDays, aes(x = OrderDayWeek, y = perc, fill = factor(Fraudulent), group = (Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
+  scale_fill_manual(values=c('darkorchid1','yellowgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) +  ylab("Frequency") + theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ theme(legend.position="none")+
+  ggtitle("Frequency of Fraudulece by Day of the Week") + xlab("Order Day") 
+```
+
+**Day of the Week**
+
+```{r, echo=FALSE, fig.height=4, fig.width=9}
+grid.arrange(Three, Four, ncol = 2)
+```
+
+Monday to Thursday are busier days and fraudulent orders are slightly higher on Sundays, Mondays, Wednesdays, and Thursdays. 
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#fraud1111 %>% mutate(average = count/newColumn)
+XXX <- fraud111 %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(totalOrders = n())
+YYY <- fraud111 %>% filter(Fraudulent == 1) %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(fraudOrders = n())
+zzz <- inner_join(XXX, YYY)
+WkrsNeeded <- zzz %>% mutate(percentFraudulentOrders = round(fraudOrders/totalOrders, digits = 2))
+WkrsNeeded
+WkrsNeeded1 <- WkrsNeeded %>% mutate(workersNeeded = totalOrders/100)
+WkrsNeeded2 <- WkrsNeeded1 %>% mutate(nonFraudOrders = totalOrders - fraudOrders) %>% select(OrderDayWeek, orderEasternTime, totalOrders, nonFraudOrders, fraudOrders, percentFraudulentOrders, workersNeeded)
+Fraud3 <- WkrsNeeded %>% group_by(OrderDayWeek) %>% summarise(averageFraud = mean(percentFraudulentOrders))
 ```
 
 
+
+```{r, include=FALSE}
+BigFraud <- fraud111 %>% group_by(orderEasternTime,OrderDayWeek, Fraudulent ) %>% summarise(n = n())
+```
+
+**Hour of the Day**
+
+Starting at about 10 am, we see an increase in orders. This needs to be considered in scheduling the reviewers. However, as we see in the frequency plot, fraud is higher in the very early hours, requiring vigilant reviewers in the corresponding shift. 
+
+```{r, echo=FALSE}
+bigFraudPlot <- ggplot(BigFraud, aes(x = orderEasternTime, y = n, fill = factor(Fraudulent), group = Fraudulent))+geom_bar(stat = "identity")+ 
+  scale_fill_manual(values=c('darkorchid1',
+'yellowgreen'))+theme_bw() + ylab("Number of Orders") +
+  ggtitle("Orders per Hour with Fraudulent Activity Highlighted in Green") + xlab("Order Time") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ theme(legend.position="none")
+```
+
+
+```{r, eval=FALSE, include=FALSE}
+ggplot(WkrsNeeded, aes(x = orderEasternTime, y = totalOrders,fill = OrderDayWeek, group = OrderDayWeek)) + geom_bar(stat = "identity") + theme_bw()  
+```
+
+```{r}
+
+bigFraudFrq <- ggplot(fraudulentTimes, aes(x = orderEasternTime, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
+scale_fill_manual(values=c('darkorchid1','yellowgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) +  ylab("Fraud Frequency") + theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ theme(legend.position="none")+
+  ggtitle("Frequency of Fraudulece by Hour") + xlab("Hour")
+```
+
+```{r, fig.height=6, fig.width=9}
+grid.arrange(bigFraudPlot, bigFraudFrq, ncol = 2)
+```
+
+
+**Shifts**
+
+There are three shifts and one period between 9pm - 2am which is not covered. Therefore the shift that starts at 2am, needs to review all orders that took place between those hours. Also, there is overlap between the shifts. To solve the scheduling problem, I use hourly data and calculate the numbers of reviewers needed to sort through the cases to effectively detect fraudulent activity. I then assigned the hours to the shifts. In order to distribute the previewed orders, i.e.m those that came in between 9pm - 2am, I took the total number of orders and divided it by the number of hours in the 2am - 10am shift. I added this number to the number of orders that typically come in at each hour. With this, I was able to calculate the number of reviewers needed. 
+
+The data is shown below. 
+
+
+```{r}
+WkrsNecessary <- WkrsNeeded %>% mutate(Shift = ifelse(orderEasternTime>=21 & orderEasternTime<8, "Ibiza", ifelse(orderEasternTime>=8 & orderEasternTime<=9, "Ibiza and Atlantic", ifelse(orderEasternTime>9 & orderEasternTime<18, "Atlantic and Montreal", ifelse(orderEasternTime>=18 & orderEasternTime<21,"Montreal", "Ibiza")))))   
+WorkersPerHour <- WkrsNeeded %>% group_by(orderEasternTime)%>% mutate(WorkersNeeded = totalOrders/100) 
+WorkersPerShift <- WkrsNecessary %>% group_by(OrderDayWeek, Shift) %>% summarise(totalNeededinShift = sum(totalOrders/100/8))
+kable(WorkersPerHour)
+```
+
+**The Model**
+
+Using the above data, I then model a schedule using this data in Excel's **Solver** Simplex-LP Add In. I did a schedule for each day of the week. Screenshots are shown below. 
+
+1. Set Up
+
+![](SetUp.png)
+ 
+ 
+ 
+<br>  
+<br>
+ 
+2. Solver 
+
+* Objective is set to 13, the number of reviewers available. 
+
+* Changing variables are the number of reviewers required on each shift.
+
+* The constraints are the numbers of workers required to do the reviewing. 
+
+* The solving method is the Simplex LP.
+
+
+![](Solved.png)
+  
+  
+  <br>
+3.Solution
+
+The final solution for each of the 7 days in the week is shown below. 
+
+![](Linear1.png)
+ 
+ 
+ <br>
+The ideal solution that the **Solver** arrived at requires 17 reviewers, 4 more than are available. Based of the observations and trends outlines in the bar charts, namely the busier days and busier hours, I made modifications to accommodate reviewer availability in each of the three geographic areas. The modified schedule is shown again here so the differences and modifications can be further regarded. 
+ 
+ <br>
+ 
+![](Solution1.png)
+
+<br>
+ 
+ 
+**Additional observations**
+
+The following bar charts and maps highlight a few other observations that might be important in considering constraints when building schedules. 
+
+Orders can be made on various websites and we can see that some of them have a higher percentage of fraudulent activity, particularly in the earlier hours.  
 
 ```{r, fig.height=20, fig.width=8}
 
 fraudulentTimesSites <- fraud111 %>% group_by(orderEasternTime, Website, Fraudulent) %>% summarise(count = n()) %>% mutate(perc= round(count/sum(count), digits = 3))
 ggplot(fraudulentTimesSites, aes(x = orderEasternTime, y = perc , fill = factor(Fraudulent), group = factor(Fraudulent))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))  + 
-  scale_fill_manual(values=c('purple',
-'forestgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + scale_x_continuous(breaks = 0:23)+ facet_wrap(~Website, ncol = 1) + theme_bw() +
+  scale_fill_manual(values=c('darkorchid1',
+'yellowgreen'), name="Order Veracity",labels=c("Authentic", "Fraudulent")) + scale_x_continuous(breaks = 0:23)+ facet_wrap(~Website, ncol = 1) + theme_bw() +
   theme(strip.background =element_rect(fill="yellow"))+
   theme(strip.text = element_text(colour = 'black'))
 
@@ -178,7 +321,6 @@ B <- fraud %>% filter(State == "New South Wales")
 C <- fraud %>% filter(State == "South Australia")
 D <- fraud %>% filter(State == "Victoria")
 UnknownCountry <- rbind.data.frame(A,B,C,D)
-UnknownCountry
 ```
 
 ```{r}
@@ -190,30 +332,21 @@ H <- inner_join(FF, E)
 I <- left_join(H, G)
 
 PercentFraud <- I %>% mutate(pctFrOrders = round(FraudulentOrders/TotalOrders, digits = 2), pctRevLost = round(TotalFraudulentRevenue/TotalRev, digits = 2), AvAmtFraudOrder = round(TotalFraudulentRevenue/FraudulentOrders, digits = 2)) %>% arrange(desc(TotalFraudulentRevenue))
-PercentFraud
 #write.csv(PercentFraud, "PctFraud.csv", row.names = F)
-PercentFraud %>% group_by(Country) %>% summarise(NumberFraudOrders = sum(FraudulentOrders), TotalOrders = sum(TotalOrders), TotalFraudAmount = sum(TotalFraudulentRevenue), sumTotalRev = sum(TotalRev)) %>% mutate(PercentFraudOrders = round(NumberFraudOrders/TotalOrders, digits = 3))
-```
-![Lost Revenue](LostRev.png){width1000px height=1000px dpi=203}
-![Lost Revenue](RevenueByState.png){width1000px height=1000px dpi=203}
-
-Group by days of the week and calculate the average number of orders.
-
-```{r}
-fraud1111 <- fraud111 %>% group_by(OrderDayWeek) %>% summarise(count = n()) 
-fraud1111$newColumn <- c(4,5,5,5,4,4,4)
-fraud1111 %>% mutate(average = count/newColumn)
+#PercentFraud %>% group_by(Country) %>% summarise(NumberFraudOrders = sum(FraudulentOrders), TotalOrders = sum(TotalOrders), TotalFraudAmount = sum(TotalFraudulentRevenue), sumTotalRev = sum(TotalRev)) %>% mutate(PercentFraudOrders = round(NumberFraudOrders/TotalOrders, digits = 3))
 ```
 
 
+Finally, orders from certain states may need to be scrutinized more carefully. There are more fraudulent orders that come from CA, AZ, TX, FL, and NY while AZ has the highest percentage of them. This should put all reviewers on alert. 
+![](Lost1.png)
+![](byState.png)
 
-```{r}
-head(fraud111)
-XXX <- fraud111 %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(totalOrders = n())
-YYY <- fraud111 %>% filter(Fraudulent == 1) %>% group_by(OrderDayWeek, orderEasternTime) %>% summarise(fraudOrders = n())
-zzz <- inner_join(XXX, YYY)
-zzz %>% mutate(percentFraudulentOrders = round(fraudOrders/totalOrders, digits = 2))
-fraud111 %>% group_by(OrderDayWeek, orderEasternTime, Fraudulent) %>% summarise(n = n())
+
+
+```{r, eval=FALSE, include=FALSE}
+given <- ggplot(fraud, aes(x = OrderHour, fill = factor(Fraudulent), group = factor(Fraudulent)))+geom_bar()
+eastern <- ggplot(fraud111, aes(x = orderEasternTime, fill = factor(Fraudulent), group = factor(Fraudulent)))+geom_bar()
+grid.arrange(given, eastern, ncol=2)
 ```
 
 
